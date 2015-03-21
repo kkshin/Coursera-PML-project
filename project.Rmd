@@ -1,0 +1,57 @@
+# PML project
+```{r}
+
+library(gdata)
+
+library(randomForest)
+```
+###### read data
+```{r}
+fitData<-read.csv('pml-training.csv')
+
+testing<-read.csv('pml-testing.csv')
+```
+###### selecting columns with 'accel' but without 'var'
+```{r}
+myvar<-matchcols(fitData,with='accel',without='var')
+
+mydata<-fitData[c(myvar,'classe')]
+
+testdata<-testing[myvar]
+```
+###### Tuning the random forest to find the best parameter mtry with the smallest OOB error
+
+```{r fig.width=7, fig.height=6}
+fitRF<-tuneRF(mydata[myvar],mydata$classe,stepFactor=1.5,ntreeTry=500)
+```
+
+###### Fit the best random forest model and decide the variable importance
+```{r}
+bestfit<-randomForest(classe~.,data=mydata,mtry=3,ntree=500,keep.forest=TRUE,importance=TRUE)
+```
+
+```{r}
+print(bestfit)
+```
+
+```{r}
+importance(bestfit,type=1)
+```
+
+```{r fig.width=7, fig.height=6}
+varImpPlot(bestfit,type=1)
+```
+
+###### Using random forest cross validation to see if we could possibly reduce the number of predictors
+```{r}
+featurefit<-rfcv(mydata[myvar],mydata$classe,ntree=500,cv.fold=5)
+```
+
+```{r fig.width=7, fig.height=6}
+with(featurefit,plot(n.var,error.cv,log='x',type='o',lwd=2))
+```
+
+###### predict the testing set
+```{r}
+pred<-predict(bestfit, testdata)
+```
